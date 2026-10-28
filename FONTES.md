@@ -38,7 +38,8 @@ conta. Se nenhum site foi consultado, escreva: **"Nenhum site consultado."**)*
 
 | # | Link público da conversa | Onde o conteúdo foi usado |
 | --- | --- | --- |
-| [https://gemini.google.com/app/42c72999ecca9feb](https://share.gemini.google/GKk83h83ILKd) | | constitution.md |
+| [https://gemini.google.com/app/42c72999ecca9feb](https://share.gemini.google/GKk83h83ILKd) | | constitution.md, README.md |
+| https://share.gemini.google/BMQbJxCTO9Us | spec.md |
 
 *(Se nenhuma IA foi utilizada, escreva: **"Nenhuma IA utilizada."**)*
 
