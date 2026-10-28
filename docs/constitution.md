@@ -8,47 +8,67 @@
 ## 1. Domain Constants & Global Calculation Formulas
 
 ### System Parameters & Environment Constants
-* `PRECO_BROTO_CENTAVOS`: Unit price for small-sized pizzas (`broto`). Value is 3250
-* `PRECO_GRANDE_CENTAVOS`: Unit price for large-sized pizzas (`grande`). Value is 5500
-* `TAXA_ENTREGA_CENTAVOS`: Fixed delivery fee applied exclusively when `tipo = "entrega"`. Value is 500
-* `DESCONTO_PROMO_PERCENTUAL`: Promotion percentage (integer). If `0`, discount is always `0`. Value is 15
-* `GORJETA_PADRAO_PERCENTUAL`: Default service tip percentage (integer, `0..30`). `0` represents regions without customary tipping. Value is 15
+* `PRECO_BROTO_CENTAVOS`: Unit price for small-sized pizzas (`broto`).
+* `PRECO_GRANDE_CENTAVOS`: Unit price for large-sized pizzas (`grande`).
+* `TAXA_ENTREGA_CENTAVOS`: Fixed delivery fee applied exclusively when `tipo = "entrega"`.
+* `DESCONTO_PROMO_PERCENTUAL`: Promotion percentage (integer). If `0`, discount is always `0`.
+* `GORJETA_PADRAO_PERCENTUAL`: Default service tip percentage (integer, `0..30`). `0` represents regions without customary tipping.
 
 ### Order Value Formulas
-1. **Subtotal Pizzas:**
-   $$\text{subtotal\_pizzas\_centavos} = \sum (\text{unit\_price}(\text{tamanho}) \times \text{quantidade})$$
-2. **Promotional Discount:**
-   $$\text{desconto\_centavos} = \left\lceil \frac{\text{subtotal\_pizzas\_centavos} \times \text{DESCONTO\_PROMO\_PERCENTUAL}}{100} \right\rceil$$
-   *Incides strictly on pizzas, never on delivery fees or tips.*
-3. **Delivery Fee:**
-   $$\text{taxa\_entrega\_centavos} = \begin{cases} \text{TAXA\_ENTREGA\_CENTAVOS}, & \text{if } \text{tipo} = \text{"entrega"} \\ 0, & \text{if } \text{tipo} \in \{\text{"balcao"}, \text{"mesa"}\} \end{cases}$$
-4. **Loyalty Discount:**
-   $$\text{desconto\_fidelidade\_centavos} = \begin{cases} \text{PRECO\_BROTO\_CENTAVOS}, & \text{if eligible (every 5th delivered order)} \\ 0, & \text{otherwise} \end{cases}$$
-5. **Order Total:**
-   $$\text{total\_centavos} = \max(0, \text{subtotal\_pizzas\_centavos} - \text{desconto\_centavos} + \text{taxa\_entrega\_centavos} - \text{desconto\_fidelidade\_centavos})$$
+
+* **Subtotal Pizzas:**
+  `subtotal_pizzas_centavos` = sum of (`valor_unitario` of item size * `quantidade`) across all items.
+  * `broto` = `PRECO_BROTO_CENTAVOS`
+  * `grande` = `PRECO_GRANDE_CENTAVOS`
+
+* **Promotional Discount:**
+  `desconto_centavos` = `ceil(subtotal_pizzas_centavos * DESCONTO_PROMO_PERCENTUAL / 100)`
+  * Rounded up (ceiling) in cents.
+  * Incides strictly on pizzas, never on delivery fees or tips.
+
+* **Delivery Fee:**
+  * When `tipo = "entrega"`: `taxa_entrega_centavos = TAXA_ENTREGA_CENTAVOS`
+  * When `tipo = "balcao"` or `tipo = "mesa"`: `taxa_entrega_centavos = 0`
+
+* **Loyalty Discount:**
+  * If eligible (every 5 delivered orders): `desconto_fidelidade_centavos = PRECO_BROTO_CENTAVOS`
+  * Otherwise: `desconto_fidelidade_centavos = 0`
+
+* **Order Total:**
+  `total_centavos` = `max(0, subtotal_pizzas_centavos - desconto_centavos + taxa_entrega_centavos - desconto_fidelidade_centavos)`
+  * Always an integer; never negative.
 
 ### Tab Closure Formulas
-1. **Tab Subtotal:**
-   $$\text{subtotal\_centavos} = \sum \text{total\_centavos of delivered orders}$$
-2. **Tip Calculation:**
-   $$\text{gorjeta\_centavos} = \left\lceil \frac{\text{subtotal\_centavos} \times \text{tip\_percentage}}{100} \right\rceil$$
-   *$\text{tip\_percentage}$ defaults to `GORJETA_PADRAO_PERCENTUAL` if `gorjeta_percentual` is omitted from the request body.*
-3. **Tab Final Total:**
-   $$\text{total\_centavos} = \text{subtotal\_centavos} + \text{gorjeta\_centavos}$$
-4. **Bill Splitting Division:**
-   Given $N = \text{dividir\_em}$ ($2 \le N \le 10$), the array `parcelas_centavos` contains exactly $N$ integers such that:
-   $$\sum_{i=1}^{N} \text{parcelas\_centavos}[i] = \text{total\_centavos}$$
-   * The base chunk is $B = \lfloor \text{total\_centavos} / N \rfloor$.
-   * The remainder is $R = \text{total\_centavos} \pmod N$.
-   * The first $R$ shares are assigned $B + 1$, and the remaining $N - R$ shares are assigned $B$.
-   * The maximum difference between any two shares is $\le 1$ cent.
+
+* **Tab Subtotal:**
+  `subtotal_centavos` = sum of `total_centavos` of all delivered orders linked to the tab.
+
+* **Tip Calculation:**
+  `gorjeta_centavos` = `ceil(subtotal_centavos * tip_percentage / 100)`
+  * Uses `gorjeta_percentual` from request body if supplied; defaults to `GORJETA_PADRAO_PERCENTUAL` if omitted.
+  * Uses the same ceiling rounding as promotional discounts.
+
+* **Tab Final Total:**
+  `total_centavos` = `subtotal_centavos + gorjeta_centavos`
+
+* **Bill Splitting Division:**
+  When `dividir_em` (`N`, between 2 and 10) is supplied:
+  * Generates an array `parcelas_centavos` with exactly `N` integers.
+  * Sum of elements equals `total_centavos` (`subtotal_centavos + gorjeta_centavos`).
+  * Base chunk `B` = `floor(total_centavos / N)`
+  * Remainder `R` = `total_centavos % N`
+  * The first `R` chunks receive `B + 1`, and the remaining `N - R` chunks receive `B`.
+  * Difference between the highest and lowest chunk is at most 1 cent.
 
 ### Daily Metrics Formulas
-1. **Gross Revenue:**
-   $$\text{faturamento\_centavos} = \sum \text{total\_centavos}$$
-   *Evaluated across all non-cancelled orders received on the specified date. Excludes table tips, as tips belong to waitstaff rather than house revenue.*
-2. **Average Ticket:**
-   $$\text{ticket\_medio\_centavos} = \begin{cases} \left\lfloor \frac{\text{faturamento\_centavos}}{\text{total\_pedidos}} + 0.5 \right\rfloor, & \text{if } \text{total\_pedidos} > 0 \\ 0, & \text{if } \text{total\_pedidos} = 0 \end{cases}$$
+
+* **Gross Revenue:**
+  `faturamento_centavos` = sum of `total_centavos` across all non-cancelled orders received on the target date.
+  * Tips are excluded from `faturamento_centavos` (tips go to waitstaff, not the house).
+
+* **Average Ticket:**
+  * When `total_pedidos > 0`: `ticket_medio_centavos = round_half_up(faturamento_centavos / total_pedidos)` (rounding 0.5 upwards).
+  * When `total_pedidos == 0`: `ticket_medio_centavos = 0` (returns 0, not an error).
 
 ---
 
@@ -60,8 +80,8 @@
     |
     +---> [cancelado] (terminal)
 ```
-* **Status Progression:** `recebido` $\to$ `preparo` $\to$ `pronto` $\to$ `entregue`.
-* **Terminal Status:** `entregue` is immutable. Attempting to transition from `entregue` returns `409 pedido_ja_finalizado`.
+* **Status Progression:** `recebido` -> `preparo` -> `pronto` -> `entregue`.
+* **Terminal Status:** `entregue` is immutable. Attempting to advance from `entregue` returns `409 pedido_ja_finalizado`.
 * **Cancellations:** Only orders in `recebido` can be cancelled (`200 OK`). Attempting to cancel an order in `preparo`, `pronto`, or `entregue` returns `409 pedido_nao_cancelavel`.
 
 ### Active Order Concurrency Rules
@@ -154,7 +174,7 @@ When evaluating `POST /pedidos`, validations must be executed in the following p
     "status": "preparo"
   }
   ```
-* **Transitions:** `recebido` $\to$ `preparo` $\to$ `pronto` $\to$ `entregue`.
+* **Transitions:** `recebido` -> `preparo` -> `pronto` -> `entregue`.
 
 ### UC3: List Active Orders
 * **Endpoint:** `GET /pedidos/ativos`
@@ -193,7 +213,7 @@ When evaluating `POST /pedidos`, validations must be executed in the following p
 
 ### UC7: Promotional Discount
 * **Cross-References:** UC1, UC10
-* **Behavior:** Encapsulates the formula $\lceil \text{subtotal} \times \text{DESCONTO\_PROMO\_PERCENTUAL} / 100 \rceil$ evaluated strictly against pizza costs.
+* **Behavior:** Encapsulates the formula `ceil(subtotal * DESCONTO_PROMO_PERCENTUAL / 100)` evaluated strictly against pizza costs.
 
 ### UC8: Single Active Order Constraint
 * **Cross-References:** UC1, UC5
@@ -254,9 +274,9 @@ When evaluating `POST /pedidos`, validations must be executed in the following p
 
 ### UC14: Menu & Availability Management
 * **Endpoints:**
-  * `PUT /cardapio/{sabor}` — Body: `{"disponivel": false}` $\to$ Updates availability (case-insensitive name match).
+  * `PUT /cardapio/{sabor}` — Body: `{"disponivel": false}` -> Updates availability (case-insensitive name match).
     * **Success Response (`200 OK`):** `{"sabor": "catupiry", "disponivel": false}`
-  * `GET /cardapio` $\to$ Returns all known flavors sorted alphabetically with their current availability status.
+  * `GET /cardapio` -> Returns all known flavors sorted alphabetically with their current availability status.
     * **Success Response (`200 OK`):** Array of flavor objects.
 
 ### UC15: Bill Splitting
