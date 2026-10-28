@@ -2,9 +2,9 @@
 
 # ALUNO
 
-Nome: FabriThomas
+Nome: Fabricio Notoya Thomas
 
-RA: >>> PREENCHER <<<
+RA: 23082446-2
 
 Conta GitHub: @FabriThomas
 
