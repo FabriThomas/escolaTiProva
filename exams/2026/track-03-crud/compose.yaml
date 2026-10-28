@@ -1,0 +1,42 @@
+# compose.yaml — OPCIONAL nesta track (Fila de Atendimento).
+#
+# A correcao funciona em dois modos:
+#   1. Voce NAO customizou este arquivo (ou o apagou): a suite sobe apenas o
+#      seu Containerfile, com um volume montado em /data. Persista sob /data
+#      (arquivo ou banco embutido, ex.: SQLite).
+#   2. Voce CUSTOMIZOU este arquivo (ex.: adicionou um banco externo): a
+#      suite sobe o ambiente com `docker compose up --build -d` e, no teste
+#      de persistencia, recria APENAS o servico `app` — banco e volumes
+#      nomeados continuam de pe, e seus dados precisam sobreviver.
+#
+# Regras se voce customizar:
+#   - o servico da API precisa se chamar `app`;
+#   - a API precisa ser publicada na porta ${PORTA_API} (a suite exporta a
+#     variavel; localmente o padrao aqui e 8080 — a sua porta exata esta em
+#     variante/params.json);
+#   - dados em volumes NOMEADOS (volume anonimo nao sobrevive a recriacao).
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Containerfile # se voce usa Dockerfile, ajuste aqui
+    ports:
+      - "${PORTA_API:-8080}:8080"
+    volumes:
+      - app-data:/data
+    # Exemplo de banco externo (descomente e ajuste o app para usa-lo):
+    # environment:
+    #   - DATABASE_URL=postgres://app:app@db:5432/fila
+    # depends_on:
+    #   - db
+  # db:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     - POSTGRES_USER=app
+  #     - POSTGRES_PASSWORD=app
+  #     - POSTGRES_DB=fila
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
+volumes:
+  app-data:
+  # db-data:

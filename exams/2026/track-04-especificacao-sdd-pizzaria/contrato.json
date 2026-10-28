@@ -1,0 +1,472 @@
+{
+  "meta": {
+    "titulo": "Prova 02 · Track 04 — Pizzaria (especificação SDD)",
+    "versao": "2026",
+    "track": "track-04-especificacao-sdd-pizzaria",
+    "correcao": {
+      "modelo": "kimi-2.8-preview-2026",
+      "harness": false,
+      "contexto_tokens": 256000,
+      "observacao": "O codigo e gerado pelo Kimi 2.8 (Preview 2026) SEM harness — apenas o agente, em janela de 256k tokens, executando a tarefa proposta pelos .md do aluno. Mesmo modelo e configuracao para todos; a unica variavel e a qualidade da especificacao."
+    },
+    "aviso": "O entregavel do aluno sao ESPECIFICACOES em .md; na correcao, um modelo de IA fixo (ver meta.correcao) gera o codigo a partir delas e a suite valida ESTE contrato exatamente (status codes, nomes de campos, regras de arredondamento). O enunciado em prosa esta no ENUNCIADO.md; este arquivo e a versao maquina-legivel do mesmo contrato."
+  },
+  "variante": {
+    "descricao": "A variante de cada aluno deriva do NOME DO REPOSITORIO aplicado a estas tabelas (hash sha256: opcoes = escolha por modulo; base/passo/faixa = base + (h % faixa) * passo). A correcao recomputa os mesmos valores — copiar params.json de colega nao funciona.",
+    "extras": {
+      "PRECO_BROTO_CENTAVOS": {
+        "base": 2500,
+        "passo": 250,
+        "faixa": 5
+      },
+      "PRECO_GRANDE_CENTAVOS": {
+        "base": 4500,
+        "passo": 500,
+        "faixa": 4
+      },
+      "TAXA_ENTREGA_CENTAVOS": {
+        "opcoes": [
+          0,
+          300,
+          500
+        ]
+      },
+      "DESCONTO_PROMO_PERCENTUAL": {
+        "opcoes": [
+          0,
+          10,
+          15
+        ]
+      },
+      "GORJETA_PADRAO_PERCENTUAL": {
+        "opcoes": [
+          0,
+          10,
+          15
+        ]
+      },
+      "PORTA_SERVICO": {
+        "base": 8001,
+        "passo": 1,
+        "faixa": 5
+      }
+    },
+    "uso": {
+      "PRECO_BROTO_CENTAVOS": "Preco unitario da pizza broto, em centavos (2500..3500)",
+      "PRECO_GRANDE_CENTAVOS": "Preco unitario da pizza grande, em centavos (4500..6000)",
+      "TAXA_ENTREGA_CENTAVOS": "Taxa cobrada em pedidos tipo entrega (0, 300 ou 500); pedidos de balcao NAO pagam taxa; pedidos de mesa tambem nao (a gorjeta vai no fechamento da comanda)",
+      "DESCONTO_PROMO_PERCENTUAL": "Percentual de desconto sobre o subtotal das PIZZAS (0, 10 ou 15); nunca incide sobre a taxa de entrega; arredondamento para CIMA em centavos",
+      "GORJETA_PADRAO_PERCENTUAL": "Percentual de gorjeta sugerido no fechamento da comanda (0, 10 ou 15) — 0 = cultura SEM gorjeta; o fechamento aceita override por requisicao (0..30), porque o costume muda de cliente para cliente",
+      "PORTA_SERVICO": "Porta em que o servico gerado deve escutar na correcao (8001..8005)"
+    }
+  },
+  "servidor": {
+    "porta_interna": 8080,
+    "fuso": "-03:00",
+    "base_url_suite": "http://localhost:{PORTA_SERVICO}",
+    "sem_env_obrigatoria": true,
+    "observacao": "O codigo GERADO (na correcao) deve subir em container e escutar na PORTA_SERVICO da variante. Data/hora em ISO-8601 com fuso -03:00."
+  },
+  "endpoints": [
+    {
+      "id": "criar_pedido",
+      "uc": "UC1",
+      "metodo": "POST",
+      "path": "/pedidos",
+      "requisicao": {
+        "body": {
+          "cliente": "obrigatória — string 2..60 caracteres (ex.: Ana Souza)",
+          "itens": "obrigatório — array 1..20; cada item: sabor (string 2..30), tamanho (\"broto\"|\"grande\"), quantidade (int 1..10)",
+          "tipo": "obrigatório — \"entrega\" | \"balcao\" | \"mesa\"",
+          "comanda_id": "obrigatório quando tipo = mesa — int; referencia uma comanda ABERTA (UC9). Presente com tipo != mesa -> 422 comanda_invalida. Inexistente ou fechada -> 422 comanda_invalida",
+          "recebido_em": "opcional — ISO-8601 com fuso (ex.: 2026-10-28T19:30:00-03:00); default = agora. Gancho de testabilidade: a suite de correcao usa para datar pedidos sem esperar tempo real. Ausencia = relogio; formato invalido = 422 recebido_invalido"
+        }
+      },
+      "respostas": {
+        "201": {
+          "corpo": {
+            "id": 1,
+            "cliente": "Ana Souza",
+            "itens": [
+              {
+                "sabor": "mussarela",
+                "tamanho": "grande",
+                "quantidade": 2,
+                "valor_unitario_centavos": 5000
+              }
+            ],
+            "tipo": "entrega",
+            "comanda_id": null,
+            "recebido_em": "<ISO-8601 com fuso -03:00>",
+            "status": "recebido",
+            "subtotal_pizzas_centavos": 10000,
+            "taxa_entrega_centavos": 500,
+            "desconto_centavos": 1000,
+            "desconto_fidelidade_centavos": 0,
+            "total_centavos": 9500
+          }
+        },
+        "422": {
+          "corpo": {
+            "erro": "cliente_invalido | itens_invalidos | tipo_invalido | recebido_invalido | comanda_invalida"
+          },
+          "quando": "cliente ausente ou fora de 2..60 caracteres; itens vazio/mais de 20/tamanho invalido/quantidade fora de 1..10; tipo fora de entrega|balcao|mesa; recebido_em presente mas fora de ISO-8601; tipo = mesa sem comanda_id valida e aberta; comanda_id presente com tipo != mesa"
+        },
+        "409": {
+          "corpo": {
+            "erro": "pedido_em_aberto"
+          },
+          "quando": "cliente ja tem pedido ativo (regra UC8 — vale para entrega e balcao; tipo = mesa fica fora, a comanda e o agrupador da mesa)"
+        }
+      },
+      "regras_valor": [
+        "subtotal_pizzas_centavos = soma de (valor_unitario_centavos do tamanho x quantidade) dos itens: broto = PRECO_BROTO_CENTAVOS, grande = PRECO_GRANDE_CENTAVOS",
+        "taxa_entrega_centavos = TAXA_ENTREGA_CENTAVOS quando tipo = entrega; 0 quando tipo = balcao OU tipo = mesa (em mesa, quem fecha a conta e a gorjeta — UC11)",
+        "desconto_centavos = subtotal_pizzas x DESCONTO_PROMO_PERCENTUAL / 100, ARREDONDANDO PARA CIMA em centavos (ceil); incide somente sobre as pizzas, NUNCA sobre a taxa de entrega",
+        "desconto_fidelidade_centavos = PRECO_BROTO_CENTAVOS no pedido premiado (UC16); 0 nos demais",
+        "total_centavos = subtotal_pizzas - desconto - desconto_fidelidade + taxa, sempre inteiro em centavos, com PISO 0 (nunca negativo) — a API nunca retorna ponto flutuante"
+      ]
+    },
+    {
+      "id": "avancar_status",
+      "uc": "UC2",
+      "metodo": "POST",
+      "path": "/pedidos/{id}/status",
+      "descricao": "Avanca o pedido um passo na esteira: recebido -> preparo -> pronto -> entregue. entregue e terminal.",
+      "respostas": {
+        "200": {
+          "corpo": {
+            "id": 1,
+            "status": "preparo"
+          }
+        },
+        "404": {
+          "corpo": {
+            "erro": "pedido_nao_encontrado"
+          },
+          "quando": "pedido inexistente"
+        },
+        "409": {
+          "corpo": {
+            "erro": "pedido_ja_finalizado"
+          },
+          "quando": "pedido ja entregue (status terminal)"
+        }
+      }
+    },
+    {
+      "id": "listar_ativos",
+      "uc": "UC3",
+      "metodo": "GET",
+      "path": "/pedidos/ativos",
+      "respostas": {
+        "200": {
+          "corpo": [
+            "array dos pedidos com status recebido, preparo ou pronto, mais recentes primeiro"
+          ]
+        }
+      }
+    },
+    {
+      "id": "relatorio_diario",
+      "uc": "UC4",
+      "metodo": "GET",
+      "path": "/relatorios/diario",
+      "requisicao": {
+        "query": {
+          "data": "obrigatória — formato AAAA-MM-DD"
+        }
+      },
+      "respostas": {
+        "200": {
+          "corpo": {
+            "data": "2026-10-28",
+            "total_pedidos": 12,
+            "faturamento_centavos": 123400,
+            "ticket_medio_centavos": 10284
+          },
+          "regra": "considera pedidos RECEBIDOS na data (campo recebido_em) e NAO cancelados; ticket_medio_centavos = faturamento / total_pedidos, arredondando 0,5 para cima"
+        },
+        "422": {
+          "corpo": {
+            "erro": "data_invalida"
+          },
+          "quando": "data fora do formato AAAA-MM-DD"
+        }
+      }
+    },
+    {
+      "id": "cancelar_pedido",
+      "uc": "UC5",
+      "metodo": "POST",
+      "path": "/pedidos/{id}/cancelamento",
+      "descricao": "Cancela um pedido em status recebido (desistencia antes de ir pro forno) — some do relatorio diario.",
+      "respostas": {
+        "200": {
+          "corpo": {
+            "id": 1,
+            "status": "cancelado"
+          }
+        },
+        "404": {
+          "corpo": {
+            "erro": "pedido_nao_encontrado"
+          },
+          "quando": "pedido inexistente"
+        },
+        "409": {
+          "corpo": {
+            "erro": "pedido_nao_cancelavel"
+          },
+          "quando": "pedido em preparo, pronto ou entregue"
+        }
+      }
+    },
+    {
+      "id": "historico_cliente",
+      "uc": "UC6",
+      "metodo": "GET",
+      "path": "/pedidos",
+      "requisicao": {
+        "query": {
+          "cliente": "obrigatória — filtra o historico do cliente"
+        }
+      },
+      "descricao": "Historico completo de um cliente (qualquer status), mais recentes primeiro.",
+      "respostas": {
+        "200": {
+          "corpo": [
+            "array de pedidos do cliente (qualquer status), mais recentes primeiro — vazio se nunca pediu"
+          ]
+        },
+        "422": {
+          "corpo": {
+            "erro": "cliente_invalido"
+          },
+          "quando": "cliente ausente ou com menos de 2 caracteres"
+        }
+      }
+    },
+    {
+      "id": "desconto_promo",
+      "uc": "UC7",
+      "regra_de_valor": true,
+      "descricao": "DESCONTO_PROMO_PERCENTUAL incide sobre o subtotal das PIZZAS (nunca sobre a taxa de entrega), com arredondamento PARA CIMA em centavos (ceil): desconto = ceil(subtotal x pct / 100). DESCONTO = 0 -> desconto_centavos sempre 0.",
+      "exemplos": [
+        "subtotal 10000, DESCONTO=10 -> 1000 centavos",
+        "subtotal 9999, DESCONTO=10 -> ceil(999,9) = 1000 centavos",
+        "subtotal 333, DESCONTO=10 -> ceil(33,3) = 34 centavos",
+        "subtotal 5000, DESCONTO=0 -> 0 centavos (e a taxa de entrega entra integral no total)"
+      ]
+    },
+    {
+      "id": "pedido_aberto_cliente",
+      "uc": "UC8",
+      "regra_de_negocio": true,
+      "descricao": "Um cliente so pode ter UM pedido ativo (status recebido, preparo ou pronto) por vez.",
+      "respostas": {
+        "409": {
+          "corpo": {
+            "erro": "pedido_em_aberto"
+          },
+          "quando": "POST /pedidos para cliente que ja tem pedido ativo"
+        }
+      },
+      "observacao": "Apos entregue ou cancelado, o cliente pode pedir novamente. Vale para tipos entrega e balcao; pedidos tipo mesa ficam FORA da regra — quem agrupa a mesa e a comanda (a comanda pode ter varios pedidos ativos ao mesmo tempo)."
+    },
+    {
+      "id": "abrir_comanda",
+      "uc": "UC9",
+      "metodo": "POST",
+      "path": "/mesas/{numero}/comandas",
+      "descricao": "Abre a comanda da mesa (ocupa a mesa). O numero da mesa e validado (1..50) e a resposta carrega o numero normalizado.",
+      "respostas": {
+        "201": {
+          "corpo": {
+            "id": 1,
+            "mesa": 7,
+            "aberta_em": "<ISO-8601 com fuso -03:00>",
+            "status": "aberta"
+          }
+        },
+        "422": {
+          "corpo": {
+            "erro": "mesa_invalida"
+          },
+          "quando": "numero da mesa fora de 1..50"
+        },
+        "409": {
+          "corpo": {
+            "erro": "mesa_ocupada"
+          },
+          "quando": "mesa ja tem comanda ABERTA (so uma comanda aberta por mesa)"
+        }
+      }
+    },
+    {
+      "id": "pedido_mesa",
+      "uc": "UC10",
+      "descricao": "Extensao do UC1: pedido tipo mesa nasce vinculado a uma comanda aberta (body comanda_id) e segue a MESMA esteira de status do UC2 — 'entregue' significa servido na mesa. Taxa de entrega = 0; o desconto promocional aplica normalmente (sobre as pizzas).",
+      "observacao": "A comanda acumula varios pedidos — cada um com seu proprio ciclo de status. So pedidos ENTREGUES entram no fechamento da conta (UC11)."
+    },
+    {
+      "id": "fechamento_conta",
+      "uc": "UC11",
+      "metodo": "POST",
+      "path": "/comandas/{id}/fechamento",
+      "descricao": "Fecha a conta da comanda: consolida os pedidos ENTREGUES (nao cancelados) da comanda, calcula a gorjeta e libera a mesa. O sistema pode operar em paises com culturas de gorjeta diferentes, entao o percentual e configuravel por requisicao, com default na variante.",
+      "requisicao": {
+        "body": {
+          "gorjeta_percentual": "opcional — int 0..30; ausente = GORJETA_PADRAO_PERCENTUAL da variante (0 = cultura SEM gorjeta). Fora de 0..30 -> 422 gorjeta_invalida",
+          "dividir_em": "opcional — int 2..10; numero de pagadores (UC15). Fora de 2..10 -> 422 divisao_invalida. Ausente -> o campo parcelas_centavos nao aparece na resposta"
+        }
+      },
+      "respostas": {
+        "200": {
+          "corpo": {
+            "id": 1,
+            "mesa": 7,
+            "aberta_em": "<ISO-8601>",
+            "fechada_em": "<ISO-8601 com fuso -03:00>",
+            "pedidos_entregues": 3,
+            "subtotal_centavos": 30500,
+            "gorjeta_centavos": 3050,
+            "total_centavos": 33550,
+            "parcelas_centavos": "[opcional — so com dividir_em: ex. [11184, 11183, 11183], soma == total, diferenca maxima de 1 centavo]"
+          }
+        },
+        "404": {
+          "corpo": {
+            "erro": "comanda_nao_encontrada"
+          },
+          "quando": "comanda inexistente"
+        },
+        "409": {
+          "corpo": {
+            "erro": "comanda_ja_fechada | comanda_com_pedidos_abertos"
+          },
+          "quando": "fechamento repetido; ou a comanda ainda tem pedido com status recebido, preparo ou pronto (a cozinha tem de servir tudo antes de fechar)"
+        }
+      },
+      "regras_valor": [
+        "subtotal_centavos = soma dos total_centavos dos pedidos ENTREGUES e nao cancelados da comanda",
+        "gorjeta_centavos = ceil(subtotal x gorjeta_percentual / 100) — arredondamento PARA CIMA, como o desconto; percentual 0 -> gorjeta 0",
+        "total_centavos = subtotal + gorjeta",
+        "a gorjeta NAO entra no faturamento_centavos do relatorio diario (UC4): gorjeta e dos garcons, nao da casa — o faturamento segue sendo a soma dos total_centavos dos pedidos"
+      ]
+    },
+    {
+      "id": "listar_comandas_abertas",
+      "uc": "UC12",
+      "metodo": "GET",
+      "path": "/comandas/abertas",
+      "respostas": {
+        "200": {
+          "corpo": [
+            "array das comandas com status aberta, mais antigas primeiro (quem chegou primeiro atende primeiro)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "historico_mesa",
+      "uc": "UC13",
+      "metodo": "GET",
+      "path": "/mesas/{numero}/comandas",
+      "descricao": "Historico de uma mesa: TODAS as comandas ja abertas nela (abertas e fechadas), mais recentes primeiro. Mesa que nunca teve comanda -> array vazio.",
+      "respostas": {
+        "200": {
+          "corpo": [
+            "array de comandas da mesa (qualquer status), mais recentes primeiro"
+          ]
+        },
+        "422": {
+          "corpo": {
+            "erro": "mesa_invalida"
+          },
+          "quando": "numero da mesa fora de 1..50"
+        }
+      }
+    },
+    {
+      "id": "cardapio_disponibilidade",
+      "uc": "UC14",
+      "endpoints": [
+        {
+          "metodo": "PUT",
+          "path": "/cardapio/{sabor}",
+          "requisicao": {
+            "body": {
+              "disponivel": "obrigatório — boolean"
+            }
+          },
+          "respostas": {
+            "200": {
+              "corpo": {
+                "sabor": "catupiry",
+                "disponivel": false
+              }
+            },
+            "422": {
+              "corpo": {
+                "erro": "sabor_invalido"
+              },
+              "quando": "sabor fora de 2..30 caracteres"
+            }
+          }
+        },
+        {
+          "metodo": "GET",
+          "path": "/cardapio",
+          "respostas": {
+            "200": {
+              "corpo": [
+                "array dos sabores conhecidos (que apareceram em algum pedido ou foram explicitamente marcados via PUT), ordenados alfabeticamente, com disponibilidade"
+              ]
+            }
+          }
+        }
+      ],
+      "descricao": "Cardapio ABERTO: qualquer sabor (2..30) e aceito em pedidos e nasce DISPONIVEL. A cozinha marca o que acabou; matching por nome sem distincao de maiusculas/minusculas (normaliza para o casing do primeiro registro).",
+      "regra_de_negocio": true,
+      "efeito_no_pedido": "POST /pedidos com item de sabor INDISPONIVEL -> 409 {\"erro\": \"sabor_indisponivel\"} e NENHUM item do pedido e gravado. Vale tambem para tipo = mesa."
+    },
+    {
+      "id": "divisao_conta",
+      "uc": "UC15",
+      "descricao": "Extensao do UC11: o body do fechamento aceita dividir_em (int 2..10). Presente, a resposta inclui parcelas_centavos: array de EXATAMENTE dividir_em inteiros, soma == total_centavos (subtotal + gorjeta), diferenca maxima de 1 centavo entre parcelas — o resto da divisao inteira fica com as PRIMEIRAS parcelas. Fora de 2..10 -> 422 divisao_invalida. Ausente -> o campo parcelas_centavos NAO aparece na resposta."
+    },
+    {
+      "id": "fidelidade_selos",
+      "uc": "UC16",
+      "regra_de_valor": true,
+      "descricao": "Cartao de selos: a cada 5 pedidos ENTREGUES do cliente (qualquer tipo; cancelados nao contam), o PROXIMO pedido ganha desconto_fidelidade_centavos = PRECO_BROTO_CENTAVOS. No 201 do pedido premiado aparece o campo (nos demais, 0). Aplicacao: total = subtotal - desconto_promo + taxa - desconto_fidelidade, com PISO 0 (total nunca negativo). Resgate de USO UNICO na criacao; cancelar o pedido premiado em recebido (UC5) DEVOLVE o resgate (cliente fica elegivel de novo). Pedidos tipo mesa contam selos pelo cliente.",
+      "exemplos": [
+        "5 entregues -> 6º pedido: desconto_fidelidade = PRECO_BROTO_CENTAVOS",
+        "subtotal 2000, taxa 300, sem promo, premio 2500 -> total = 0 (piso; nunca negativo)",
+        "pedido premiado cancelado em recebido -> proximo pedido volta a ser premiado",
+        "pedido em preparo+ NAO pode ser cancelado -> premio nao e devolvido depois dessa fase"
+      ]
+    }
+  ],
+  "exemplo_inconsistente": {
+    "aviso": "TRAMPA T7 — o 'exemplo de um relatorio antigo' abaixo CONTRADIZ o contrato de proposito. Confie no contrato, nao no exemplo.",
+    "conteudo": "GET /relatorios/diario?data=2026-10-28 → {\"data\": \"2026-10-28\", \"faturamento\": 123.40}",
+    "por_que_esta_errado": "O contrato exige faturamento_centavos inteiro (ex.: 123400), nunca ponto flutuante ('faturamento': 123.40), alem de total_pedidos e ticket_medio_centavos; e o exemplo omite que pedidos cancelados nao entram no relatorio."
+  },
+  "entregavel": {
+    "descricao": "Especificacoes em .md (NUNCA codigo), na raiz do repositorio (docs/ tambem e lido): constitution.md, spec.md, plan.md, tests.md, tasks.md — nomes e quantidade livres, pontuam os 5 melhores",
+    "criterio_E_checklist": {
+      "constitution.md": ">= 1 regra operacional concreta",
+      "spec.md": ">= 1 criterio de aceite mensuravel por UC",
+      "plan.md": ">= 1 decisao tecnica com justificativa",
+      "tests.md": ">= 1 caso de borda por regra de negocio",
+      "tasks.md": ">= 3 tarefas decompostas",
+      "outro .md": "headers + especificacao concreta que instrua geracao de codigo"
+    },
+    "regra_fatal": "Snippets de codigo de ate 20 linhas sao aceitos nos .md para elucidar o agente; bloco maior que 20 linhas = implementacao colada = prova ZERADA (verificado automaticamente no CI, job md)"
+  },
+  "regras_gerais": [
+    "Precedencia de erros: validacao de formato (422) vem ANTES de regras de negocio (409) — payload malformado nunca dispara conflito de estado. Ordem completa no POST /pedidos: formato do body (422) -> comanda invalida (422, quando tipo = mesa) -> sabor indisponivel (409, UC14) -> cliente com pedido ativo (409, UC8). No fechamento: formato do body (422 gorjeta/divisao) -> estado da comanda (404/409)"
+  ]
+}
