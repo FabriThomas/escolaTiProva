@@ -1,0 +1,10 @@
+{
+  "slug": "escolaTiProva",
+  "EXAM_DIR": "exams/2026/track-04-especificacao-sdd-pizzaria",
+  "PRECO_BROTO_CENTAVOS": 3250,
+  "PRECO_GRANDE_CENTAVOS": 5500,
+  "TAXA_ENTREGA_CENTAVOS": 500,
+  "DESCONTO_PROMO_PERCENTUAL": 15,
+  "GORJETA_PADRAO_PERCENTUAL": 15,
+  "PORTA_SERVICO": 8004
+}
