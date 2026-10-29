@@ -40,6 +40,10 @@ conta. Se nenhum site foi consultado, escreva: **"Nenhum site consultado."**)*
 | --- | --- | --- |
 | [https://gemini.google.com/app/42c72999ecca9feb](https://share.gemini.google/GKk83h83ILKd) | | constitution.md, README.md |
 | https://share.gemini.google/BMQbJxCTO9Us | spec.md |
+| https://share.gemini.google/1hjMd4yPKoUB | plan.md |
+| https://share.gemini.google/Kz7qEJAV8ROv | plan.md, tasks.md, tests.md |
+| https://share.gemini.google/S0jLQptcedJA | plan.md, tasks.md, tests.md
+
 
 *(Se nenhuma IA foi utilizada, escreva: **"Nenhuma IA utilizada."**)*
 
