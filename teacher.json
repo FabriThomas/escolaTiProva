@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "repo": "escolaTiProva",
+  "repo_url": "https://github.com/FabriThomas/escolaTiProva",
+  "exam_dir": "exams/2026/track-04-especificacao-sdd-pizzaria",
+  "track": "track-04-especificacao-sdd-pizzaria",
+  "issue": 1,
+  "issue_url": "https://github.com/FabriThomas/escolaTiProva/issues/1",
+  "gerado_em": "2026-10-29T00:29:08+00:00",
+  "fechada_em": "2026-10-29T00:28:45Z",
+  "aplicada": true,
+  "motivo": null,
+  "aluno": {
+    "login": "FabriThomas",
+    "ra": "23082446",
+    "nome": "Fabricio Notoya Thomas"
+  },
+  "variante": {
+    "slug": "escolaTiProva",
+    "EXAM_DIR": "exams/2026/track-04-especificacao-sdd-pizzaria",
+    "PRECO_BROTO_CENTAVOS": 3250,
+    "PRECO_GRANDE_CENTAVOS": 5500,
+    "TAXA_ENTREGA_CENTAVOS": 500,
+    "DESCONTO_PROMO_PERCENTUAL": 15,
+    "GORJETA_PADRAO_PERCENTUAL": 15,
+    "PORTA_SERVICO": 8004
+  },
+  "entrada": "docs/README.md",
+  "janela": {
+    "minutos": 120,
+    "t0": "2026-10-28T22:32:11Z",
+    "ultimo_push": "2026-10-28T21:25:50-03:00"
+  },
+  "commits": {
+    "total": 26,
+    "autores": [
+      "FabriThomas"
+    ],
+    "primeiro": "2026-10-28T19:28:23-03:00",
+    "ultimo": "2026-10-28T21:25:50-03:00",
+    "fora_da_janela": 0,
+    "pre_aplicacao": 1,
+    "pre_t0_pos_setup": 1
+  },
+  "nota_parcial": {
+    "valor": null,
+    "criterios": {}
+  },
+  "auto_correcao": {
+    "executada": true,
+    "nota_ultima": 15
+  },
+  "fontes": {
+    "presente": true,
+    "declarou_vazio": true,
+    "links": 0
+  }
+}
