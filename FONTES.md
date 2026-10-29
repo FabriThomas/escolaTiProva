@@ -14,9 +14,7 @@
 > texto corrido — inclusive o exemplo logo abaixo — **não são contados**
 > como fonte declarada.
 
-| # | URL | O que foi consultado | Onde aparece no entregável |
-| --- | --- | --- | --- |
-| — | | | |
+Nenhum site consultado.
 
 *(Ex.: `https://docs.oracle.com/...` → sintaxe de `Optional` → `plan.md` na
 seção de decisões. Esse link é ILUSTRATIVO — fora de linha numerada não
@@ -41,8 +39,8 @@ conta. Se nenhum site foi consultado, escreva: **"Nenhum site consultado."**)*
 | [https://gemini.google.com/app/42c72999ecca9feb](https://share.gemini.google/GKk83h83ILKd) | | constitution.md, README.md |
 | https://share.gemini.google/BMQbJxCTO9Us | spec.md |
 | https://share.gemini.google/1hjMd4yPKoUB | plan.md |
-| https://share.gemini.google/Kz7qEJAV8ROv | plan.md, tasks.md, tests.md |
-| https://share.gemini.google/S0jLQptcedJA | plan.md, tasks.md, tests.md
+| https://share.gemini.google/C5sIco9r2gp9 | plan.md, tasks.md, tests.md, constitution.md |
+| https://share.gemini.google/86F2wSJU6Vqf | plan.md, tasks.md, tests.md, readme.md |
 
 
 *(Se nenhuma IA foi utilizada, escreva: **"Nenhuma IA utilizada."**)*
